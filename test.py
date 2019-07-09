@@ -1,8 +1,11 @@
 import asyncio
+import os
 import sys
+import tempfile
 
 from aiosmtpd.controller import Controller
 from colorama import Fore
+from mailbox import Maildir
 from server import MessageHandler
 from telnetlib import Telnet
 
@@ -12,8 +15,8 @@ from telnetlib import Telnet
 # ----------------------------------------------------------------------
 
 
-async def test_send_message(h):
-    before = h.accepted
+async def test_send_message(mailbox):
+    mail_count = len(mailbox)
     tn = Telnet('localhost', port=8025)
     tn.write(b'EHLO test.nutty.dev\r\n')
     tn.write(b'MAIL FROM: integration@test.nutty.dev\r\n')
@@ -24,7 +27,7 @@ async def test_send_message(h):
     tn.write(b'.\r\n')
     tn.write(b'QUIT\r\n')
     tn.read_all()
-    assert h.accepted > before
+    assert len(mailbox) > mail_count
 
 
 # ----------------------------------------------------------------------
@@ -49,24 +52,31 @@ def fail():
 
 
 async def run_tests():
-    # start smtp server
-    handler = MessageHandler('./mailbox')
-    controller = Controller(handler)
-    controller.start()
+    with tempfile.TemporaryDirectory() as maildir:
+        # create temporary mailbox
+        for d in ['cur', 'new', 'tmp']:
+            maildirdir = os.path.join(maildir, d)
+            os.mkdir(maildirdir)
+        mailbox = Maildir(maildir)
 
-    # run tests
-    tests = filter(
-        lambda f: f.startswith('test_'),
-        globals().keys(),
-    )
-    for test in tests:
-        print(test + '...', end=' ')
-        try:
-            await globals()[test](handler)
-        except AssertionError:
-            fail()
-            continue
-        succeed()
+        # start smtp server
+        handler = MessageHandler(maildir)
+        controller = Controller(handler)
+        controller.start()
+
+        # run tests
+        tests = filter(
+            lambda f: f.startswith('test_'),
+            globals().keys(),
+        )
+        for test in tests:
+            print(test + '...', end=' ')
+            try:
+                await globals()[test](mailbox)
+            except AssertionError:
+                fail()
+                continue
+            succeed()
 
 
 if __name__ == '__main__':

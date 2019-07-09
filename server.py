@@ -34,7 +34,6 @@ class MessageHandler:
             if not os.path.isdir(maildirdir):
                 raise ValueError('not a valid maildir')
 
-        self.accepted = 0
         self.maildir = maildir
         self.mailbox = mailbox.Maildir(maildir)
 
@@ -65,7 +64,6 @@ class MessageHandler:
         # deliver message to maildir
         message = self.prepare_message(session, envelope)
         self.mailbox.add(message)
-        self.accepted += 1
 
         return '250 Message Accepted'
 
