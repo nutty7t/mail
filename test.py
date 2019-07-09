@@ -12,7 +12,8 @@ from telnetlib import Telnet
 # ----------------------------------------------------------------------
 
 
-async def test_send_message():
+async def test_send_message(h):
+    before = h.accepted
     tn = Telnet('localhost', port=8025)
     tn.write(b'EHLO test.nutty.dev\r\n')
     tn.write(b'MAIL FROM: integration@test.nutty.dev\r\n')
@@ -23,6 +24,7 @@ async def test_send_message():
     tn.write(b'.\r\n')
     tn.write(b'QUIT\r\n')
     tn.read_all()
+    assert h.accepted > before
 
 
 # ----------------------------------------------------------------------
@@ -48,8 +50,9 @@ def fail():
 
 async def run_tests():
     # start smtp server
-    # controller = Controller(MessageHandler())
-    # controller.start()
+    handler = MessageHandler()
+    controller = Controller(handler)
+    controller.start()
 
     # run tests
     tests = filter(
@@ -59,7 +62,7 @@ async def run_tests():
     for test in tests:
         print(test + '...', end=' ')
         try:
-            await globals()[test]()
+            await globals()[test](handler)
         except AssertionError:
             fail()
             continue

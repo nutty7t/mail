@@ -5,6 +5,10 @@ from aiosmtpd.controller import Controller
 
 
 class MessageHandler:
+
+    # count of accepted messages
+    accepted = 0
+
     async def handle_RCPT(self, server, session, envelope, address, rcpt_options):
         # TODO: check delivery rules
         if not address.endswith('@nutty.email'):
@@ -32,11 +36,7 @@ class MessageHandler:
         # TODO: deliver message to maildir
         # ...
 
-        # DEBUG: preview message
-        message = email.message_from_bytes(envelope.content)
-        print(f'From: {envelope.mail_from}')
-        print(f'To: {", ".join(envelope.rcpt_tos)}')
-        print(message)
+        self.accepted += 1
 
         return '250 Message Accepted'
 
