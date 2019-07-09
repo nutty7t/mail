@@ -50,7 +50,7 @@ def fail():
 
 async def run_tests():
     # start smtp server
-    handler = MessageHandler()
+    handler = MessageHandler('./mailbox')
     controller = Controller(handler)
     controller.start()
 

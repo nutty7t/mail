@@ -1,13 +1,42 @@
 import asyncio
 import email
+import mailbox
+import os
 
 from aiosmtpd.controller import Controller
 
 
 class MessageHandler:
+    """
+    Message Handler aiosmtpd hook methods that get called at various
+    points in the SMTP dialog.
 
-    # count of accepted messages
-    accepted = 0
+    handle_RCPT: checks delivery rules in a SQL database to verify that
+    the recipient email address exists; the idea is that the user can
+    configure a whitelist of email addresses that dictate which emails
+    the handler should allow to be delivered.
+
+    handle_MAIL: validates that email messages protect against UVB
+    rays -- just kidding -- it validates SPF records.
+
+    handle_DATA: validates DKIM signatures and stores email messages
+    in an Maildir directory.
+    """
+
+    def __init__(self, maildir=''):
+        # check maildir directory
+        if not os.path.exists(maildir):
+            raise ValueError(f'maildir \'{maildir}\' does not exist')
+
+        # check maildir subdirectories
+        for d in ['cur', 'new', 'tmp']:
+            maildirdir = os.path.join(maildir, d)
+            if not os.path.isdir(maildirdir):
+                raise ValueError('not a valid maildir')
+
+        self.accepted = 0
+        self.maildir = maildir
+        self.mailbox = mailbox.Maildir(maildir)
 
     async def handle_RCPT(self, server, session, envelope, address, rcpt_options):
         # TODO: check delivery rules
@@ -33,16 +62,24 @@ class MessageHandler:
         # TODO: validate DKIM
         # ...
 
-        # TODO: deliver message to maildir
-        # ...
-
+        # deliver message to maildir
+        message = self.prepare_message(session, envelope)
+        self.mailbox.add(message)
         self.accepted += 1
 
         return '250 Message Accepted'
 
+    def prepare_message(self, session, envelope):
+        data = envelope.content
+        message = email.message_from_bytes(data)
+        message['From'] = envelope.mail_from
+        message['To'] = ', '.join(envelope.rcpt_tos)
+
+        return message
+
 
 async def main():
-    controller = Controller(MessageHandler())
+    controller = Controller(MessageHandler(), port=25)
     controller.start()
 
 
