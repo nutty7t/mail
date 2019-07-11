@@ -48,7 +48,7 @@ class MessageHandler:
         return '250 OK'
 
     async def handle_MAIL(self, server, session, envelope, address, mail_options):
-        # TODO: validate SPF
+        # TODO: validate SPF record
         # ...
 
         # update envelope
@@ -58,7 +58,10 @@ class MessageHandler:
         return '250 OK'
 
     async def handle_DATA(self, server, session, envelope):
-        # TODO: validate DKIM
+        # TODO: validate DKIM signature
+        # ...
+
+        # TODO: check for DMARC compliance
         # ...
 
         # deliver message to maildir
